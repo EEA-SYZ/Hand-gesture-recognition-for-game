@@ -5,7 +5,7 @@ from pygame.locals import *
 import random
 import cv2
 from imutils import resize
-from paddlex.deploy import Predictor
+from gesture_mediapipe import GestureRecognizer
 from camera_compat import open_camera
 import pygame.font
 import os
@@ -21,8 +21,8 @@ def text_objects(text, font):
 SCREEN_WIDTH = 480
 SCREEN_HEIGHT = 800
 
-# 手势识别器
-model = Predictor('rec_inference_model', use_gpu=True)
+# 手势识别器（MediaPipe Hands，单只手）
+gesture = GestureRecognizer()
 
 # 子弹类
 
@@ -168,6 +168,7 @@ running = True
 
 # 移动方向（初始化）
 move = 'pause'
+last_move = 'pause'
 
 # 读取前置摄像头（无摄像头时自动使用虚拟摄像头，可用方向键操作）
 camera = open_camera()
@@ -265,11 +266,12 @@ while running:
                     cv2.rectangle(frame, (left, top),
                                   (right, bottom), (0, 255, 0), 2)  # 绘制绿框
                     roi = frame[top:bottom, right:left]  # 手势位置
-                    if shoot_frequency % 10 == 0 and getattr(
-                            camera, 'is_real', True):
-                        pred = model.predict(roi)  # 使用SVM/CNN预测手势
-                        move = pred[0]['category']
-                        print('-[INFO] Update movement to ', move)
+                    if getattr(camera, 'is_real', True):
+                        # 每帧都做一次识别并绘制骨骼，控制更跟手
+                        move = gesture.recognize(roi)
+                        if move != last_move:
+                            print('-[INFO] Update movement to ', move)
+                            last_move = move
                     if getattr(camera, 'is_real', True):
                         cv2.imshow('frame', frame)  # 显示摄像头画面
                         cv2.waitKey(int(1000/fps))

@@ -10,7 +10,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [1/3] Creating virtual environment .venv ...
+echo [1/4] Creating virtual environment .venv ...
 if not exist ".venv\Scripts\python.exe" (
     python -m venv .venv
     if errorlevel 1 (
@@ -20,16 +20,24 @@ if not exist ".venv\Scripts\python.exe" (
     )
 )
 
-echo [2/3] Upgrading pip ...
+echo [2/4] Upgrading pip ...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip
 
-echo [3/3] Installing dependencies ^(about 150 MB^) ...
+echo [3/4] Installing Python dependencies ...
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
     echo.
     echo [ERROR] Dependency installation failed. If it fails while building imutils,
     echo         install the other packages first, then copy the pure-Python imutils
     echo         package into .venv\Lib\site-packages\.
+    pause
+    exit /b 1
+)
+
+echo [4/4] Installing MediaPipe 0.10.21 without its optional jax dependencies ...
+".venv\Scripts\python.exe" -m pip install --no-deps -r requirements-mediapipe.txt
+if errorlevel 1 (
+    echo [ERROR] MediaPipe installation failed.
     pause
     exit /b 1
 )

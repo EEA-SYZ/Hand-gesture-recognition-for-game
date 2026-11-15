@@ -1,0 +1,4 @@
+# Installed with --no-deps by setup_env.bat.
+# MediaPipe's legacy Hands solution works without jax/jaxlib and without
+# replacing opencv-python with opencv-contrib-python.
+mediapipe==0.10.21
