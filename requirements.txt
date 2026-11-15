@@ -1,0 +1,11 @@
+# Python 3.12 / Windows 10-11 (64-bit)
+# PaddlePaddle 2.6.2 is the newest CPU build that can load this PaddleX 1.3
+# inference model on Python 3.12.  PaddleX 1.3 itself is replaced by the
+# lightweight compatibility layer in ./paddlex (see 环境配置报告.md).
+numpy==1.26.4
+opencv-python==4.10.0.84
+pygame==2.6.1
+imutils==0.5.4
+PyYAML==6.0.2
+paddlepaddle==2.6.2
+setuptools==84.2.1

@@ -1,0 +1,10 @@
+.venv/
+.tmp/
+.pip-cache/
+.dsh-office-*/
+__pycache__/
+*.py[cod]
+*.log
+camera_snapshot.png
+winrt_camera_snapshot.jpg
+plane_cnn.exe

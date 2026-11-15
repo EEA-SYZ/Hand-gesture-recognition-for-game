@@ -6,6 +6,7 @@ import random
 import cv2
 from imutils import resize
 from paddlex.deploy import Predictor
+from camera_compat import open_camera
 import pygame.font
 import os
 
@@ -159,14 +160,17 @@ score = 0
 # 游戏循环帧率设置
 clock = pygame.time.Clock()
 
+# 提示文字字体（无摄像头时使用方向键操作）
+hint_font = pygame.font.Font('platech.ttf', 22)
+
 # 判断游戏循环退出的参数
 running = True
 
 # 移动方向（初始化）
 move = 'pause'
 
-# 读取前置摄像头
-camera = cv2.VideoCapture(0)
+# 读取前置摄像头（无摄像头时自动使用虚拟摄像头，可用方向键操作）
+camera = open_camera()
 
 # 手势区域
 top, right, bottom, left = 90, 360, 285, 580
@@ -227,6 +231,21 @@ while running:
                 if pressed[0]:
                     # 响应点击Play事件，游戏开始
                     start = True
+        if pygame.key.get_pressed()[K_SPACE]:
+            start = True
+
+        if not getattr(camera, 'is_real', True):
+            if getattr(camera, 'reason', '') == 'forced':
+                hint_text = '已启用键盘模式'
+            else:
+                hint_text = '摄像头不可用，已切换为方向键控制'
+            hint = hint_font.render(hint_text, True, (60, 60, 60))
+            screen.blit(hint, (20, 690))
+            hint2 = hint_font.render('可运行 check_camera.bat 检查摄像头',
+                                     True, (0, 0, 0))
+            screen.blit(hint2, (20, 718))
+        tip = hint_font.render('点击 Play 或按空格键开始', True, (255, 255, 0))
+        screen.blit(tip, (20, 746))
 
     else:
         if score < 25:
@@ -246,12 +265,14 @@ while running:
                     cv2.rectangle(frame, (left, top),
                                   (right, bottom), (0, 255, 0), 2)  # 绘制绿框
                     roi = frame[top:bottom, right:left]  # 手势位置
-                    if shoot_frequency % 10 == 0:
+                    if shoot_frequency % 10 == 0 and getattr(
+                            camera, 'is_real', True):
                         pred = model.predict(roi)  # 使用SVM/CNN预测手势
                         move = pred[0]['category']
                         print('-[INFO] Update movement to ', move)
-                    cv2.imshow('frame', frame)  # 显示摄像头画面
-                    cv2.waitKey(int(1000/fps))
+                    if getattr(camera, 'is_real', True):
+                        cv2.imshow('frame', frame)  # 显示摄像头画面
+                        cv2.waitKey(int(1000/fps))
                 shoot_frequency += 1
                 if shoot_frequency >= 15:
                     shoot_frequency = 0
@@ -332,6 +353,8 @@ while running:
                 if x1 < 338 and y1 < 423:
                     if pressed[0]:
                         score = 0
+            if pygame.key.get_pressed()[K_SPACE]:
+                score = 0
         # 绘制得分
         score_font = pygame.font.Font(None, 36)
         if score > max_score:
@@ -353,14 +376,26 @@ while running:
             pygame.quit()
             exit()
 
-    if move == 'right':
-        player.moveRight()
-    elif move == 'left':
-        player.moveLeft()
-    elif move == 'up':
-        player.moveUp()
-    elif move == 'down':
-        player.moveDown()
+    if start:
+        # 键盘方向键控制（无摄像头时作为替代方案，也可与手势同时使用）
+        keys = pygame.key.get_pressed()
+        if keys[K_LEFT]:
+            move = 'left'
+        elif keys[K_RIGHT]:
+            move = 'right'
+        elif keys[K_UP]:
+            move = 'up'
+        elif keys[K_DOWN]:
+            move = 'down'
+
+        if move == 'right':
+            player.moveRight()
+        elif move == 'left':
+            player.moveLeft()
+        elif move == 'up':
+            player.moveUp()
+        elif move == 'down':
+            player.moveDown()
 
 # 游戏 Game Over 后显示最终得分
 font = pygame.font.Font(None, 64)
