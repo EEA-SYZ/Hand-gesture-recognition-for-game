@@ -12,8 +12,9 @@ Gesture mapping:
     thumbs-up pointing right       -> right
     anything else / no hand        -> pause
 
-Finger state is intentionally simple: a finger is "open" when its tip is
-farther from the palm centre than its PIP/MCP joint by a fixed ratio.
+Finger state is determined by the joint angle at the PIP node: a straight
+finger is close to 180 degrees, while a folded finger curls back toward the
+palm and its PIP angle drops below ``FOLD_ANGLE``.
 """
 
 from __future__ import absolute_import
@@ -29,9 +30,10 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-# Distance ratios used to decide whether a finger is extended.
-OPEN_DIST_RATIO = 1.00     # fingertip distance / palm size
-THUMB_OPEN_RATIO = 1.20    # thumb tip distance / thumb MCP distance
+# Joint-angle thresholds used to decide whether a finger is folded.
+FOLD_ANGLE = 150.0         # PIP angle below this means the finger is folded
+THUMB_OPEN_ANGLE = 150.0   # thumb IP angle above this means it is extended
+THUMB_DIST_RATIO = 0.75    # thumb tip distance / palm size (avoid thumb-on-palm)
 HORIZONTAL_RATIO = 0.80    # |dx| / |dy| for a sideways thumb
 HORIZONTAL_MIN = 0.25      # |dx| / palm size for a sideways thumb
 
@@ -52,6 +54,18 @@ def _as_xy(landmarks):
                     dtype=np.float32)
 
 
+def _joint_angle(a, b, c):
+    """Angle ABC in degrees (2D projection of the landmarks)."""
+    v1 = a - b
+    v2 = c - b
+    n1 = float(np.linalg.norm(v1))
+    n2 = float(np.linalg.norm(v2))
+    if n1 < 1e-9 or n2 < 1e-9:
+        return 0.0
+    cos_value = float(np.dot(v1, v2) / (n1 * n2))
+    return float(np.degrees(np.arccos(np.clip(cos_value, -1.0, 1.0))))
+
+
 def classify_landmarks(landmarks):
     """Classify one MediaPipe hand into up/down/left/right/pause.
 
@@ -69,16 +83,16 @@ def classify_landmarks(landmarks):
 
     open_count = 0
     for mcp, pip, tip in FINGERS:
-        d_tip = float(np.linalg.norm(pts[tip] - palm))
-        # Simple rule requested for this project: compare the fingertip's
-        # distance to the palm centre with the palm size.
-        if d_tip > palm_size * OPEN_DIST_RATIO:
+        # A straight finger has a PIP angle close to 180 degrees; a folded
+        # finger's tip curls back toward the palm and the angle drops.
+        pip_angle = _joint_angle(pts[mcp], pts[pip], pts[tip])
+        if pip_angle > FOLD_ANGLE:
             open_count += 1
 
-    d_thumb_tip = float(np.linalg.norm(pts[THUMB_TIP] - palm))
-    d_thumb_mcp = float(np.linalg.norm(pts[THUMB_MCP] - palm))
-    thumb_open = (d_thumb_mcp > 1e-6 and
-                  d_thumb_tip > d_thumb_mcp * THUMB_OPEN_RATIO)
+    thumb_angle = _joint_angle(pts[THUMB_MCP], pts[THUMB_IP], pts[THUMB_TIP])
+    thumb_dist = float(np.linalg.norm(pts[THUMB_TIP] - palm))
+    thumb_open = (thumb_angle > THUMB_OPEN_ANGLE and
+                  thumb_dist > palm_size * THUMB_DIST_RATIO)
 
     thumb_vec = pts[THUMB_TIP] - pts[THUMB_MCP]
     dx, dy = float(thumb_vec[0]), float(thumb_vec[1])

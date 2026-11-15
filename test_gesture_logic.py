@@ -19,6 +19,8 @@ def make_hand(open_flags, thumb="closed"):
         pts[3], pts[4] = (0.72, 0.66), (0.82, 0.63)
     elif thumb == "up":
         pts[3], pts[4] = (0.38, 0.60), (0.40, 0.45)
+    elif thumb == "across":  # straight thumb lying on the palm: not extended
+        pts[3], pts[4] = (0.45, 0.70), (0.55, 0.70)
     else:  # folded across the palm
         pts[3], pts[4] = (0.44, 0.66), (0.48, 0.60)
 
@@ -40,6 +42,8 @@ def make_hand(open_flags, thumb="closed"):
 CASES = [
     ("open palm", make_hand([True, True, True, True], "left"), "up"),
     ("fist", make_hand([False, False, False, False], "closed"), "down"),
+    ("fist, thumb across", make_hand([False, False, False, False], "across"),
+     "down"),
     ("thumb left", make_hand([False, False, False, False], "left"), "left"),
     ("thumb right", make_hand([False, False, False, False], "right"), "right"),
     ("thumb up (other)", make_hand([False, False, False, False], "up"),
