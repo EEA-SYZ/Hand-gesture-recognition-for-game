@@ -266,16 +266,6 @@ class GestureConfirmer(object):
         self._count = 0
         self._confirmed = None
 
-    @property
-    def candidate(self):
-        """The reading currently being counted (``None`` = no hand)."""
-        return self._candidate
-
-    @property
-    def count(self):
-        """How many frames in a row the candidate was read."""
-        return self._count
-
     def push(self, code):
         """Feed one frame's raw reading, return the accepted code."""
         if code == self._candidate:
@@ -286,12 +276,6 @@ class GestureConfirmer(object):
         if self._count >= self.frames:
             self._confirmed = code
         return self._confirmed
-
-    def reset(self):
-        """Forget the candidate and the accepted code."""
-        self._candidate = None
-        self._count = 0
-        self._confirmed = None
 
 
 class GestureState(object):
@@ -348,10 +332,6 @@ class SingleHandRecognizer(object):
             min_detection_confidence=min_detection_confidence,
             min_tracking_confidence=min_tracking_confidence)
         self._confirmer = GestureConfirmer(confirm_frames)
-
-    def reset(self):
-        """Forget the accepted gesture (e.g. when the game restarts)."""
-        self._confirmer.reset()
 
     def process(self, frame_bgr):
         """Recognise the hand on *frame_bgr* and draw the skeleton on it.
