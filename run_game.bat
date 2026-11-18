@@ -25,7 +25,7 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 set PYTHONIOENCODING=utf-8
-".venv\Scripts\python.exe" plane_cnn.py %*
+".venv\Scripts\python.exe" plane_game.py %*
 
 if errorlevel 1 (
     echo.

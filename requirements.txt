@@ -5,7 +5,6 @@
 numpy==1.26.4
 opencv-python==4.10.0.84
 pygame==2.6.1
-imutils==0.5.4
 matplotlib==3.10.0
 protobuf==4.25.3
 absl-py==2.1.0

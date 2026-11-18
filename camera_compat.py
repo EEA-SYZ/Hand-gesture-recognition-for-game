@@ -27,8 +27,6 @@ except Exception:
 
 WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 450
-# Same gesture box as plane_cnn.py: (x1, y1) - (x2, y2)
-ROI_RECT = (360, 90, 580, 285)
 
 
 class VirtualCamera(object):
@@ -58,16 +56,14 @@ class VirtualCamera(object):
 
     def read(self):
         frame = self._base.copy()
-        x1, y1, x2, y2 = ROI_RECT
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
         cv2.putText(frame, "CAMERA UNAVAILABLE", (20, 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 220, 255), 2,
                     cv2.LINE_AA)
-        cv2.putText(frame, "Play with arrow keys", (20, 100),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (230, 230, 230), 2,
+        cv2.putText(frame, "Keyboard mode: arrow keys + space", (20, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (230, 230, 230), 2,
                     cv2.LINE_AA)
-        cv2.putText(frame, "Gesture box (simulated)", (x1, y1 - 12),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 1,
+        cv2.putText(frame, "ROI: top-right quarter", (20, 140),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1,
                     cv2.LINE_AA)
         # Moving scan line makes it obvious the preview is alive.
         y = int((time.time() - self._start) * 80) % self.height

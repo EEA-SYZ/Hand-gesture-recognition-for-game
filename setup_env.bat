@@ -27,9 +27,8 @@ echo [3/4] Installing Python dependencies ...
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
     echo.
-    echo [ERROR] Dependency installation failed. If it fails while building imutils,
-    echo         install the other packages first, then copy the pure-Python imutils
-    echo         package into .venv\Lib\site-packages\.
+    echo [ERROR] Dependency installation failed. Check the network/proxy and
+    echo         run this script again.
     pause
     exit /b 1
 )

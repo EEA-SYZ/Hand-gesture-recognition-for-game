@@ -8,3 +8,6 @@ __pycache__/
 camera_snapshot.png
 winrt_camera_snapshot.jpg
 plane_cnn.exe
+
+# 本地最高分（玩家数据，不属于源码）
+highscore.json
