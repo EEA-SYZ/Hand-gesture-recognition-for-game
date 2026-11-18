@@ -9,11 +9,12 @@ screens and runs the frame loop.  The layout is designed for the bundled
 
 Controls
 --------
-* hold the ``Xx1111`` hand pose for 0.7 s to start a round (no hand, or any
-  other pose, leaves the plane where it is);
+* hold the ``X11111`` hand pose (the whole hand open, thumb included) for
+  0.7 s to start a round (no hand, or any other pose, leaves the plane where
+  it is);
 * ``Xx1111`` up, ``X00000`` down, ``P10000`` left, ``N10000`` right;
 * on the game over screen: click 重来 or press space to return to the start
-  screen, or hold ``Xx1111`` for 0.7 s to restart directly;
+  screen, or hold ``X11111`` for 0.7 s to restart directly;
 * arrow keys still move the plane as a keyboard fallback, space starts a round
   when no usable camera is present (keyboard mode);
 * ESC quits.
@@ -511,7 +512,7 @@ def _keyboard_direction():
 def _start_or_restart(game, keyboard_mode):
     """Handle space / the restart button.
 
-    With a camera the round always needs the ``Xx1111`` pose, so space and the
+    With a camera the round always needs the ``X11111`` pose, so space and the
     button only go back to the start screen.  Without a usable camera the pose
     can never be recognised, hence keyboard mode starts the round directly.
     """

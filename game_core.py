@@ -91,7 +91,7 @@ SIDE_ENTRY_MARGIN = 12.0
 # Round rules.
 # ---------------------------------------------------------------------------
 MAX_CHANCES = 3
-HOLD_SECONDS = 0.7                      # Xx1111 has to be held this long
+HOLD_SECONDS = 0.7                      # X11111 has to be held this long
 INVINCIBLE_SECONDS = 3.0
 HIT_FLASH_SECONDS = 0.5
 EXPLOSION_SECONDS = 0.4
@@ -443,7 +443,7 @@ class PlaneGame(object):
 
     # -- state ----------------------------------------------------------
     def reset(self):
-        """Back to the start screen (holding Xx1111 starts a round)."""
+        """Back to the start screen (holding X11111 starts a round)."""
         self.state = self.READY
         self.score = 0
         self.chances = self.max_chances
@@ -484,7 +484,7 @@ class PlaneGame(object):
     def restart(self):
         """Restart button: back to the start screen.
 
-        The next round still has to be started by holding ``Xx1111`` again,
+        The next round still has to be started by holding ``X11111`` again,
         exactly like the first round.
         """
         self.reset()
