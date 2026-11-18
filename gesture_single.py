@@ -384,7 +384,7 @@ class SingleHandRecognizer(object):
         y = int(points[WRIST].y * height)
         label = format_label(self._stable)
         label_x = min(max(4, x - 30), max(4, width - 120))
-        label_y = min(max(16, y + 18), max(16, height - 8))
+        label_y = min(max(16, y + 18), max(16, height - 26))
         _text_box(roi, label, (label_x, label_y), SKELETON_COLOR, 0.55)
 
     def close(self):
