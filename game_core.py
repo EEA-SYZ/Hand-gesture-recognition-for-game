@@ -30,7 +30,8 @@ Rules implemented here (see ``工作汇报.md`` for the full description):
 
 * the new side enemies fly in horizontally at a very low speed; their entry
   point is announced 3 s in advance.  A side enemy enters from the right when
-  the player is near the left edge at spawn time, and from the left otherwise.
+  the player is near the left edge at spawn time, and from the left otherwise;
+  its entry row is the row the player occupies at spawn time.
 """
 
 from __future__ import absolute_import
@@ -721,12 +722,16 @@ class PlaneGame(object):
 
         The side is chosen from the player position *at spawn time*: a player
         near the left edge is attacked from the right, otherwise from the left.
+        The announced row is the row the player occupies at that moment, so the
+        horizontal enemy flies in at the player's height instead of a random
+        one; the row stays fixed during the countdown (the dashed line marks
+        exactly where it will enter) and is clamped to the play area.
         """
         player_near_left = self.player.center[0] < self.width / 2.0
         side = "R" if player_near_left else "L"
-        y = self.rng.uniform(
-            self.play_top + SIDE_ENTRY_MARGIN,
-            self.play_bottom - ENEMY_H - SIDE_ENTRY_MARGIN)
+        y = self.player.center[1] - ENEMY_H / 2.0
+        y = max(self.play_top + SIDE_ENTRY_MARGIN,
+                min(y, self.play_bottom - ENEMY_H - SIDE_ENTRY_MARGIN))
         warning = SideWarning(side, y)
         self.warnings.append(warning)
         self.events.append({"type": "warning", "side": side, "y": y})

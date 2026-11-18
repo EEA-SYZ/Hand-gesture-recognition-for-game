@@ -84,7 +84,11 @@ def stage_battlefield(game):
         Enemy("top", 330.0, 210.0, vy=190.0),
         Enemy("side", 300.0, 430.0, vx=-SIDE_ENEMY_SPEED),
     ]
-    game.warnings = [SideWarning("R", 610.0, 2.2)]
+    # The warning is staged exactly like the spawn rule: it aims at the row the
+    # player currently occupies, and it enters from the side away from it.
+    warning_side = "R" if game.player.center[0] < game.width / 2.0 else "L"
+    game.warnings = [SideWarning(warning_side,
+                                 game.player.center[1] - ENEMY_H / 2.0, 2.2)]
     game.bullets = [Bullet(221.0, 300.0), Bullet(221.0, 380.0)]
     game.popups = [Popup(358.0, 200.0, "+1", "score")]
     game.hit_flash = 0.0

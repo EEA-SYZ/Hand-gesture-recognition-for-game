@@ -416,6 +416,10 @@ def test_side_enemy():
         check("the entry row is inside the play area",
               PLAY_TOP <= entry_y <= PLAY_BOTTOM - ENEMY_H,
               "{:.1f}".format(entry_y))
+        check("the entry row aims at the player's row",
+              abs(entry_y - (game.player.center[1] - ENEMY_H / 2.0)) < 1e-6,
+              "{:.1f} vs {:.1f}".format(
+                  entry_y, game.player.center[1] - ENEMY_H / 2.0))
 
         advance(game, 1.0, None)
         check("countdown shows 2", game.warnings[0].remaining == 2,
@@ -443,11 +447,18 @@ def test_side_enemy():
 
         # Player near the right edge -> the side enemy enters from the left.
         game.player.x = game.width - game.player.w
+        game.player.y = 260.0
         game.side_timer = 0.01
         game.update(0.02, None)
         check("a player near the right is attacked from the left",
               game.warnings and game.warnings[-1].side == "L",
               game.warnings[-1].side if game.warnings else "no warning")
+        check("the row follows the player's current position",
+              abs(game.warnings[-1].y -
+                  (game.player.center[1] - ENEMY_H / 2.0)) < 1e-6,
+              "{:.1f} vs {:.1f}".format(
+                  game.warnings[-1].y,
+                  game.player.center[1] - ENEMY_H / 2.0))
 
         # The side enemy crosses the screen at a constant height and leaves.
         game.warnings = []
