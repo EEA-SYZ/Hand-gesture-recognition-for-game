@@ -15,7 +15,8 @@ from __future__ import absolute_import
 import os
 import tempfile
 
-from game_core import (ENEMY_H, ENEMY_HIT_RADIUS, ENEMY_W, HOLD_SECONDS,
+from game_core import (BULLET_H, BULLET_RADIUS, BULLET_W, ENEMY_BULLET_RADIUS,
+                       ENEMY_H, ENEMY_HIT_RADIUS, ENEMY_W, HOLD_SECONDS,
                        INVINCIBLE_SECONDS, MAX_CHANCES, PLAYER_HIT_RADIUS,
                        PLAYER_W, PLAY_BOTTOM, PLAY_TOP, SIDE_ENEMY_SPEED,
                        SIDE_WARN_SECONDS, Bullet, Difficulty, Enemy,
@@ -268,14 +269,20 @@ def test_restart():
 # Chances / invincibility / collision
 # ---------------------------------------------------------------------------
 def test_hit_boxes():
-    check("player radius covers half a wing",
-          abs(PLAYER_HIT_RADIUS - PLAYER_W / 4.0) < 1e-9,
+    check("player radius is a third of the wingspan",
+          abs(PLAYER_HIT_RADIUS - PLAYER_W / 3.0) < 1e-9,
           str(PLAYER_HIT_RADIUS))
-    check("player circle is smaller than a wing span",
+    check("player circle stays inside the wingspan",
           PLAYER_HIT_RADIUS < PLAYER_W / 2.0)
-    check("enemy radius derived the same way",
+    check("enemy plane-collision radius is a quarter of the width",
           abs(ENEMY_HIT_RADIUS - ENEMY_W / 4.0) < 1e-9,
           str(ENEMY_HIT_RADIUS))
+    check("enemy bullet circle is a third of the width",
+          abs(ENEMY_BULLET_RADIUS - ENEMY_W / 3.0) < 1e-9,
+          str(ENEMY_BULLET_RADIUS))
+    check("enemy bullet circle is larger than the collision circle",
+          ENEMY_BULLET_RADIUS > ENEMY_HIT_RADIUS,
+          "{:.2f} > {:.2f}".format(ENEMY_BULLET_RADIUS, ENEMY_HIT_RADIUS))
     radius = PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS
     check("circles just outside the sum do not collide",
           not _circle_hit(0.0, 0.0, PLAYER_HIT_RADIUS,
@@ -283,6 +290,58 @@ def test_hit_boxes():
     check("overlapping circles collide",
           _circle_hit(0.0, 0.0, PLAYER_HIT_RADIUS,
                       radius - 1.0, 0.0, ENEMY_HIT_RADIUS))
+
+
+def _bullet_at(enemy, offset_x):
+    """A bullet whose centre is *offset_x* pixels right of the enemy centre."""
+    ex, ey = enemy.center
+    return Bullet(ex + offset_x - BULLET_W / 2.0,
+                  ey - BULLET_H / 2.0)
+
+
+def test_enemy_hit_circles():
+    """The two enemy circles are used by the right collision."""
+    with tempfile.TemporaryDirectory() as folder:
+        game = new_game(folder)
+        game.start()
+
+        # A bullet just inside the (larger) bullet circle hits.
+        enemy = Enemy("top", 200.0, 300.0, vy=0.0)
+        game.enemies = [enemy]
+        game.bullets = [_bullet_at(
+            enemy, ENEMY_BULLET_RADIUS + BULLET_RADIUS - 1.0)]
+        game._resolve_collisions()
+        check("a bullet inside the enemy bullet circle hits",
+              not game.enemies)
+
+        # One just outside it misses.
+        enemy = Enemy("top", 200.0, 300.0, vy=0.0)
+        game.enemies = [enemy]
+        game.bullets = [_bullet_at(
+            enemy, ENEMY_BULLET_RADIUS + BULLET_RADIUS + 1.0)]
+        game._resolve_collisions()
+        check("a bullet outside the enemy bullet circle misses",
+              len(game.enemies) == 1)
+
+        # The player collision still uses the smaller circle: an enemy that
+        # would only touch the bullet circle costs no chance.
+        px, py = game.player.center
+        distance = PLAYER_HIT_RADIUS + ENEMY_BULLET_RADIUS - 1.0
+        game.invincible_timer = 0.0
+        game.enemies = [Enemy("top", px + distance - ENEMY_W / 2.0,
+                              py - ENEMY_H / 2.0, vy=0.0)]
+        game.update(STEP, None)
+        check("the bullet circle does not widen the player collision",
+              game.chances == MAX_CHANCES, str(game.chances))
+
+        # An enemy touching the smaller circle does cost a chance.
+        distance = PLAYER_HIT_RADIUS + ENEMY_HIT_RADIUS - 1.0
+        game.invincible_timer = 0.0
+        game.enemies = [Enemy("top", px + distance - ENEMY_W / 2.0,
+                              py - ENEMY_H / 2.0, vy=0.0)]
+        game.update(STEP, None)
+        check("the plane-collision circle costs a chance",
+              game.chances == MAX_CHANCES - 1, str(game.chances))
 
 
 def test_chances_and_invincibility():
@@ -535,6 +594,7 @@ def main():
     test_hold_to_start()
     test_restart()
     test_hit_boxes()
+    test_enemy_hit_circles()
     test_chances_and_invincibility()
     test_bullets_and_score()
     test_player_movement_and_bounds()

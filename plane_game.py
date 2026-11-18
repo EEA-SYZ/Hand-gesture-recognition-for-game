@@ -16,7 +16,8 @@ Controls
 * on the game over screen: click 重来 or press space to return to the start
   screen, or hold ``X11111`` for 0.7 s to restart directly;
 * the circular hit boxes are outlined on screen: the player's in cyan, the
-  enemies' in red;
+  enemies' plane-collision circle in red and their larger bullet circle in
+  violet;
 * arrow keys still move the plane as a keyboard fallback, space starts a round
   when no usable camera is present (keyboard mode);
 * ESC quits.
@@ -60,6 +61,7 @@ BUTTON_HOVER = (92, 204, 144)
 #: Colours of the circular hit boxes drawn over the planes.
 HITBOX_PLAYER = (0, 190, 255)
 HITBOX_ENEMY = (255, 70, 70)
+HITBOX_BULLET = (200, 120, 255)
 
 CAMERA_WINDOW = "Camera - Plane Game"
 
@@ -274,12 +276,16 @@ class PlaneScene(object):
             self._draw_border(canvas, DANGER, game.hit_flash / 0.5)
 
     def _draw_hitboxes(self, canvas, game):
-        """Outline the circular hit boxes of the player and of every enemy."""
+        """Outline the hit boxes: the player's and both circles of every enemy."""
         for enemy in game.enemies:
             center = (int(round(enemy.center[0])),
                       int(round(enemy.center[1])))
+            # The larger bullet circle (thin) first, the collision circle on
+            # top (bold).
+            pygame.draw.circle(canvas, HITBOX_BULLET, center,
+                               int(round(enemy.bullet_radius)), 1)
             pygame.draw.circle(canvas, HITBOX_ENEMY, center,
-                               int(round(enemy.radius)), 2)
+                               int(round(enemy.hit_radius)), 2)
         center = (int(round(game.player.center[0])),
                   int(round(game.player.center[1])))
         pygame.draw.circle(canvas, HITBOX_PLAYER, center,

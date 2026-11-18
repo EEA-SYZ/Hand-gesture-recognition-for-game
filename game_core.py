@@ -65,9 +65,9 @@ PLAY_BOTTOM = SCREEN_HEIGHT - BOTTOM_PANEL_HEIGHT
 PLAYER_W, PLAYER_H = 102, 126
 PLAYER_SPEED = 400.0                    # px/s
 #: Circular hit box of the player.  The sprite is 102 px wide, i.e. the wings
-#: span 51 px to each side; the circle only covers *half* of one wing, so its
-#: radius is 102 / 4 = 25.5 px.
-PLAYER_HIT_RADIUS = PLAYER_W / 4.0
+#: span 51 px to each side; the circle covers about two thirds of one wing, so
+#: its radius is 102 / 3 = 34 px.
+PLAYER_HIT_RADIUS = PLAYER_W / 3.0
 
 BULLET_W, BULLET_H = 9, 21
 BULLET_SPEED = 620.0                    # px/s
@@ -78,9 +78,12 @@ FIRE_INTERVAL = 0.18                    # s between two automatic shots
 # Enemies.
 # ---------------------------------------------------------------------------
 ENEMY_W, ENEMY_H = 57, 43
-#: Circular hit box of an enemy, derived the same way as the player's:
-#: 57 / 4 = 14.25 px (half of one wing half-span).
+#: Circular hit box of an enemy against the player plane: 57 / 4 = 14.25 px.
 ENEMY_HIT_RADIUS = ENEMY_W / 4.0
+#: Circular hit box of an enemy against the player's bullets.  Bullets are tiny
+#: and fast, so this circle is a little larger than the collision circle:
+#: 57 / 3 = 19 px.
+ENEMY_BULLET_RADIUS = ENEMY_W / 3.0
 #: Side enemies fly in horizontally at a deliberately low speed.
 SIDE_ENEMY_SPEED = 55.0                 # px/s
 #: The entry point of a side enemy is announced this long before it appears.
@@ -330,12 +333,18 @@ class Enemy(object):
 
     ``kind`` is ``"top"`` for the classic enemies falling from the top edge
     (speed rolled individually) and ``"side"`` for the horizontal ones.
+
+    An enemy has two circular hit boxes: ``hit_radius`` is the one that
+    collides with the player plane, ``bullet_radius`` the slightly larger one
+    that catches the player's bullets.
     """
 
-    __slots__ = ("kind", "x", "y", "w", "h", "vx", "vy", "radius", "alive")
+    __slots__ = ("kind", "x", "y", "w", "h", "vx", "vy", "hit_radius",
+                 "bullet_radius", "alive")
 
     def __init__(self, kind, x, y, vx=0.0, vy=0.0, w=ENEMY_W, h=ENEMY_H,
-                 radius=ENEMY_HIT_RADIUS):
+                 hit_radius=ENEMY_HIT_RADIUS,
+                 bullet_radius=ENEMY_BULLET_RADIUS):
         self.kind = kind
         self.x = float(x)
         self.y = float(y)
@@ -343,7 +352,8 @@ class Enemy(object):
         self.h = int(h)
         self.vx = float(vx)
         self.vy = float(vy)
-        self.radius = float(radius)
+        self.hit_radius = float(hit_radius)
+        self.bullet_radius = float(bullet_radius)
         self.alive = True
 
     @property
@@ -752,7 +762,7 @@ class PlaneGame(object):
 
     # -- collisions -----------------------------------------------------
     def _resolve_collisions(self):
-        # Bullets vs. enemies.
+        # Bullets vs. enemies (the larger bullet-only circle of the enemy).
         for bullet in self.bullets:
             if not bullet.alive:
                 continue
@@ -761,7 +771,8 @@ class PlaneGame(object):
                 if not enemy.alive:
                     continue
                 ex, ey = enemy.center
-                if _circle_hit(bx, by, bullet.radius, ex, ey, enemy.radius):
+                if _circle_hit(bx, by, bullet.radius, ex, ey,
+                               enemy.bullet_radius):
                     bullet.alive = False
                     enemy.alive = False
                     self._kill_enemy(enemy)
@@ -769,13 +780,15 @@ class PlaneGame(object):
         self.bullets = [item for item in self.bullets if item.alive]
         self.enemies = [item for item in self.enemies if item.alive]
 
-        # Player vs. enemies (ignored while invincible).
+        # Player vs. enemies (ignored while invincible; the enemy's collision
+        # circle, not its bullet circle, is used here).
         if self.invincible_timer > 0.0:
             return
         px, py = self.player.center
         for enemy in self.enemies:
             ex, ey = enemy.center
-            if _circle_hit(px, py, self.player.radius, ex, ey, enemy.radius):
+            if _circle_hit(px, py, self.player.radius, ex, ey,
+                           enemy.hit_radius):
                 enemy.alive = False
                 self._lose_chance(enemy)
                 break
