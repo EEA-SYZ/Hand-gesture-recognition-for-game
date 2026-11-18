@@ -151,8 +151,9 @@ def main():
         store.save({"best": 42, "last": 30, "games": 6})
         game = PlaneGame(seed=7, highscore=store)
         # The scene is created inside run(), after the display mode is set.
+        # A fixed time step keeps the generated pictures reproducible.
         result = run(source, hook=make_hook(source), game=game,
-                     show_camera=False, fps=60)
+                     show_camera=False, fps=60, fixed_dt=1.0 / 60.0)
 
     print("[capture] final state={} score={} best={} chances={}".format(
         result.state, result.score, result.best_score, result.chances))

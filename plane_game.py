@@ -528,7 +528,7 @@ def _start_or_restart(game, keyboard_mode):
 def run(source, scene=None, hook=None, fps=60, keyboard_mode=False,
         show_camera=True, game=None, warning=None,
         camera_window=CAMERA_WINDOW,
-        window_title="手势打飞机 / Gesture Plane War"):
+        window_title="手势打飞机 / Gesture Plane War", fixed_dt=None):
     """Run the game loop until the user quits.
 
     Args:
@@ -539,6 +539,8 @@ def run(source, scene=None, hook=None, fps=60, keyboard_mode=False,
             rendered frame; return ``False`` to stop (used by capture_game).
         game: optional pre-built :class:`game_core.PlaneGame` (tests inject a
             temporary high score file).
+        fixed_dt: use this constant step instead of the measured frame time
+            (the screenshot capture uses it to make the pictures reproducible).
     """
     window = pygame.display.set_mode(WINDOW_SIZE)
     pygame.display.set_caption(window_title)
@@ -558,7 +560,9 @@ def run(source, scene=None, hook=None, fps=60, keyboard_mode=False,
     frame_index = 0
     try:
         while running:
-            dt = min(clock.tick(fps) / 1000.0, 0.05)
+            frame_ms = clock.tick(fps)
+            dt = (min(frame_ms / 1000.0, 0.05) if fixed_dt is None
+                  else float(fixed_dt))
             for event in pygame.event.get():
                 if event.type == QUIT:
                     running = False
