@@ -63,7 +63,7 @@ PLAY_BOTTOM = SCREEN_HEIGHT - BOTTOM_PANEL_HEIGHT
 # Player / bullets.
 # ---------------------------------------------------------------------------
 PLAYER_W, PLAYER_H = 102, 126
-PLAYER_SPEED = 400.0                    # px/s
+PLAYER_SPEED = 300.0                    # px/s (was 400; slowed down for control)
 #: Circular hit box of the player.  The sprite is 102 px wide, i.e. the wings
 #: span 51 px to each side; the circle covers about two thirds of one wing, so
 #: its radius is 102 / 3 = 34 px.

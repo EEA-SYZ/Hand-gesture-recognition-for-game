@@ -16,7 +16,8 @@ from types import SimpleNamespace
 
 from gesture_code import (direction_of, hand_code, is_start_pose, parse_hand,
                           format_code)
-from gesture_single import classify_hand, read_hand, roi_rect
+from gesture_single import (CONFIRM_FRAMES, GestureConfirmer, classify_hand,
+                            read_hand, roi_rect)
 
 PALM_WRIST = (0.50, 0.90)
 PALM_MIDDLE = (0.48, 0.59)
@@ -183,6 +184,45 @@ def test_pose_to_direction():
           point)
 
 
+def test_confirmation():
+    """A reading is only accepted after three identical frames in a row."""
+    check("the confirmation window is three frames", CONFIRM_FRAMES == 3)
+    confirmer = GestureConfirmer()
+    check("one frame is not enough", confirmer.push("P10000") is None)
+    check("two frames are not enough", confirmer.push("P10000") is None)
+    check("three identical frames confirm the gesture",
+          confirmer.push("P10000") == "P10000")
+
+    # A different reading has to start counting from zero again.
+    check("a single different frame keeps the confirmed gesture",
+          confirmer.push("N10000") == "P10000")
+    check("two different frames keep it too",
+          confirmer.push("N10000") == "P10000")
+    check("its third frame switches the gesture",
+          confirmer.push("N10000") == "N10000")
+
+    # Losing the hand is confirmed the same way, so one dropped frame does not
+    # stop the plane.
+    check("one no-hand frame keeps the gesture",
+          confirmer.push(None) == "N10000")
+    check("two no-hand frames keep it too",
+          confirmer.push(None) == "N10000")
+    check("three no-hand frames clear the gesture",
+          confirmer.push(None) is None)
+
+    # Flickering between two readings never confirms anything.
+    flapping = GestureConfirmer()
+    readings = [flapping.push(code)
+                for code in ("P10000", "N10000") * 3]
+    check("alternating readings never confirm",
+          all(reading is None for reading in readings))
+
+    # The window can be configured (tests / tuning).
+    fast = GestureConfirmer(frames=2)
+    check("the confirmation window is configurable",
+          fast.push("P11111") is None and fast.push("P11111") == "P11111")
+
+
 def test_roi():
     """The ROI is 95 % of the top-right quarter of the frame."""
     width, height = 600, 450
@@ -219,6 +259,7 @@ def main():
     test_directions()
     test_start_pose()
     test_pose_to_direction()
+    test_confirmation()
     test_roi()
     print()
     if FAILED:

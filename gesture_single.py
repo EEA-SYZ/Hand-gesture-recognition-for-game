@@ -20,7 +20,9 @@ Everything else is identical to the reference implementation:
   from a shortened 2D projection);
 * the thumb is extended when it is not flexed towards the palm and its tip is
   far enough from the palm centre;
-* a per-character majority vote over the last few frames removes jitter;
+* a reading only becomes the accepted gesture after the **same 6 character
+  code was recognised 3 frames in a row** (``CONFIRM_FRAMES``), which removes
+  one-frame misreads without any per-character guessing;
 * the 21 landmarks and their connections are drawn on the ROI, which is a view
   into the camera frame, so the skeleton shows up in the preview window.
 
@@ -35,7 +37,6 @@ restarts a round; it is reported through :attr:`GestureState.start_pose`.
 
 from __future__ import absolute_import
 
-import collections
 import os
 import threading
 import time
@@ -79,8 +80,9 @@ THUMB_FOLD_ANGLE = 150.0
 THUMB_FLEXION_MIN = 0.10
 #: Horizontal thumb offset (relative to palm size) that is unambiguous.
 THUMB_SIDE_RATIO = 0.22
-#: Number of frames used by the per-character majority vote.
-SMOOTH_WINDOW = 4
+#: A gesture is only accepted after the same hand code was read this many
+#: frames in a row (3 frames at 30 FPS = about 0.1 s).
+CONFIRM_FRAMES = 3
 
 #: The recognised hand is used with the right-hand convention of the two-hand
 #: game (P = thumb points left, N = thumb points right).
@@ -246,25 +248,54 @@ def roi_rect(frame_shape):
 
 
 # ---------------------------------------------------------------------------
-# Smoothed recognition result
+# Gesture confirmation: the same code has to be read several frames in a row
 # ---------------------------------------------------------------------------
-def _smooth_tokens(history, stable, token):
-    """Per-character majority vote over the recent 6 character tokens."""
-    history.append(token)
-    previous = stable or token
-    chars = []
-    for index in range(6):
-        counts = collections.Counter(item[index] for item in history)
-        char, count = counts.most_common(1)[0]
-        if count * 2 <= len(history):
-            # No strict majority (including a tie): keep what we had.
-            char = previous[index]
-        chars.append(char)
-    return "".join(chars)
+class GestureConfirmer(object):
+    """Accept a reading only after it repeated :data:`CONFIRM_FRAMES` times.
+
+    ``push`` is called once per recognised frame with the raw 6 character code
+    (or ``None`` when no hand was read) and returns the currently accepted
+    code.  A different reading restarts the count, so a single misread frame
+    can neither move the plane nor stop it; the accepted code only changes
+    after three identical readings in a row.
+    """
+
+    def __init__(self, frames=CONFIRM_FRAMES):
+        self.frames = max(1, int(frames))
+        self._candidate = None
+        self._count = 0
+        self._confirmed = None
+
+    @property
+    def candidate(self):
+        """The reading currently being counted (``None`` = no hand)."""
+        return self._candidate
+
+    @property
+    def count(self):
+        """How many frames in a row the candidate was read."""
+        return self._count
+
+    def push(self, code):
+        """Feed one frame's raw reading, return the accepted code."""
+        if code == self._candidate:
+            self._count += 1
+        else:
+            self._candidate = code
+            self._count = 1
+        if self._count >= self.frames:
+            self._confirmed = code
+        return self._confirmed
+
+    def reset(self):
+        """Forget the candidate and the accepted code."""
+        self._candidate = None
+        self._count = 0
+        self._confirmed = None
 
 
 class GestureState(object):
-    """One recognition result: the smoothed hand code plus derived fields."""
+    """One recognition result: the confirmed hand code plus derived fields."""
 
     __slots__ = ("code", "direction", "start_pose", "image", "roi",
                  "timestamp")
@@ -297,7 +328,7 @@ class SingleHandRecognizer(object):
                  min_detection_confidence=0.55,
                  min_tracking_confidence=0.50,
                  model_complexity=None,
-                 smooth_window=SMOOTH_WINDOW):
+                 confirm_frames=CONFIRM_FRAMES):
         import mediapipe as mp
 
         if model_complexity is None:
@@ -316,18 +347,11 @@ class SingleHandRecognizer(object):
             model_complexity=model_complexity,
             min_detection_confidence=min_detection_confidence,
             min_tracking_confidence=min_tracking_confidence)
-        self._history = collections.deque(maxlen=smooth_window)
-        self._stable = None
+        self._confirmer = GestureConfirmer(confirm_frames)
 
-    # -- recognition ----------------------------------------------------
-    def _reset(self):
-        self._history.clear()
-        self._stable = None
-
-    def _smooth(self, token):
-        smoothed = _smooth_tokens(self._history, self._stable, token)
-        self._stable = smoothed
-        return smoothed
+    def reset(self):
+        """Forget the accepted gesture (e.g. when the game restarts)."""
+        self._confirmer.reset()
 
     def process(self, frame_bgr):
         """Recognise the hand on *frame_bgr* and draw the skeleton on it.
@@ -336,9 +360,13 @@ class SingleHandRecognizer(object):
         frame that is shown in the preview window (the ROI rectangle itself is
         drawn by ``plane_game.annotate_camera``).
 
+        A reading is only reported after the same hand code was seen
+        ``confirm_frames`` frames in a row, so one bad frame neither moves nor
+        stops the plane.  ``None`` (no hand) is confirmed the same way.
+
         Returns:
-            A :class:`GestureState`; ``code`` is ``None`` when no usable hand
-            was found.
+            A :class:`GestureState`; ``code`` is ``None`` when no hand was
+            confirmed.
         """
         if frame_bgr is None or not getattr(frame_bgr, "size", 0):
             return GestureState()
@@ -352,23 +380,20 @@ class SingleHandRecognizer(object):
         rgb.flags.writeable = False
         results = self._hands.process(rgb)
 
-        code = None
+        reading = None
         if results.multi_hand_landmarks:
             hand = results.multi_hand_landmarks[0]
             classified = classify_hand(hand.landmark)
             if classified is not None:
-                code = self._smooth(hand_code(*classified))
-                self._draw_hand(roi, hand)
-            else:
-                self._reset()
-        else:
-            self._reset()
+                reading = hand_code(*classified)
+                self._draw_hand(roi, hand, reading)
 
+        code = self._confirmer.push(reading)
         return GestureState(code=code, image=frame_bgr, roi=(x1, y1, x2, y2),
                             timestamp=time.time())
 
     # -- drawing --------------------------------------------------------
-    def _draw_hand(self, roi, hand):
+    def _draw_hand(self, roi, hand, reading):
         try:
             self._drawing.draw_landmarks(
                 roi, hand, self._modules.HAND_CONNECTIONS,
@@ -382,7 +407,9 @@ class SingleHandRecognizer(object):
         height, width = roi.shape[:2]
         x = int(points[WRIST].x * width)
         y = int(points[WRIST].y * height)
-        label = format_label(self._stable)
+        # The wrist label shows the raw reading of this frame; the accepted
+        # (confirmed) code is what the game actually uses.
+        label = format_label(reading)
         label_x = min(max(4, x - 30), max(4, width - 120))
         label_y = min(max(16, y + 18), max(16, height - 26))
         _text_box(roi, label, (label_x, label_y), SKELETON_COLOR, 0.55)
