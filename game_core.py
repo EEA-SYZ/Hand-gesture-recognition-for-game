@@ -63,7 +63,6 @@ PLAY_BOTTOM = SCREEN_HEIGHT - BOTTOM_PANEL_HEIGHT
 # ---------------------------------------------------------------------------
 PLAYER_W, PLAYER_H = 102, 126
 PLAYER_SPEED = 400.0                    # px/s
-PLAYER_START = (SCREEN_WIDTH // 2 - PLAYER_W // 2, PLAY_BOTTOM - PLAYER_H - 10)
 #: Circular hit box of the player.  The sprite is 102 px wide, i.e. the wings
 #: span 51 px to each side; the circle only covers *half* of one wing, so its
 #: radius is 102 / 4 = 25.5 px.

@@ -39,9 +39,6 @@ from __future__ import absolute_import
 #: Allowed thumb tokens.
 THUMBS = ("P", "N")
 
-#: Directions understood by the game logic (``pause`` = do not move).
-DIRECTIONS = ("up", "down", "left", "right", "pause")
-
 #: Four long fingers extended: the ``1111`` part of ``Xx1111``.
 LONG_FINGERS_UP = "1111"
 
